@@ -1,0 +1,4 @@
+variables:
+    BuildPath : C:\BuildFiles
+    resourceGroupName : test
+    subscriptionId : b58d1946-8152-4142-88a1-782935b7a7f2

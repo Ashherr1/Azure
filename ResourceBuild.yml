@@ -1,0 +1,60 @@
+trigger:
+- main
+
+pool:
+  name: LocalWorker 
+
+variables: 
+ - template: variables.yml
+
+stages:    
+  - stage: Validation
+    jobs:
+      - job : LintValidaton
+        displayName: Lint Templates
+        steps:
+#Download Template Files
+        - task: CopyFiles@2
+          name: Copy_Templates_to_Local_Worker 
+          inputs:
+            SourceFolder: 'Azure-Resources'
+            Contents: '**'
+            TargetFolder: $(BuildPath)
+
+#Bicep templates Format Validation
+        - script: |
+           az bicep build --file $(BuildPath)\templates\loganalytics.bicep
+          name : LintBicepCode
+          displayName: Validate LogAnalytics Bicep 
+    
+    
+        - task: AzureResourceManagerTemplateDeployment@3
+          name: Validate_Log_Analtics_Deployment
+          inputs:
+            deploymentScope: 'Resource Group'
+            azureResourceManagerConnection: 'AzureDevopsServiceConnection'
+            subscriptionId: $(subscriptionId)
+            action: 'Create Or Update Resource Group'
+            resourceGroupName: $(resourceGroupName)
+            location: 'South Central US'
+            templateLocation: 'Linked artifact'
+            csmFile: $(BuildPath)\templates\loganalytics.bicep
+            csmParametersFile: $(BuildPath)\parameters\loganalytics.parameters.json
+            deploymentMode: 'Validation'
+
+
+#Publish Build Files 
+        - task: PublishBuildArtifacts@1
+          name: Publish_Templates_To_Azure_Artifacts
+          inputs:
+            PathtoPublish: $(BuildPath)
+            ArtifactName: 'drop'
+            publishLocation: 'Container'
+
+#Delete Template Files from the Build Computer
+        - task: DeleteFiles@1
+          continueOnError: true
+          name: Clear_Local_Build_Files
+          inputs:
+            SourceFolder: $(BuildPath)
+            Contents: '**'
